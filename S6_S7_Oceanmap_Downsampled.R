@@ -21,17 +21,25 @@ pacific_centered <- function(raster) {
 
 #### Read station and satellite data and formatting ####
 
-Stations_Combined_Atlantic <- data_select("data/Atlantic/", "Prok")$Meta_Data %>%
-  mutate(Ocean = "Atlantic Ocean") %>%
-  mutate(Station = as.character(Station)) %>%
-  select(Cruise, Ocean, Station, Latitude, Longitude, Province) %>%
+datalist_Combined <- import_data("data/Combined_Reduced/", kingdom = "Prok", abundance_filter = T, min_counts = 2000) %>%
+  mutate_meta_datalist(Depth_Grp = ifelse(Depth <= DCM, "Epi", "Meso")) %>%
+  mutate_meta_datalist(Ocean = ifelse(str_detect(Cruise, pattern = "^ANT"), "Atlantic", "Pacific")) %>%
+  filter_taxa_datalist(Family != "Mitochondria") %>%
+  filter_station_datalist(Depth <= 200)
+
+datalist_Combined_reduced <- datalist_Combined %>%
+  filter_station_datalist(!(Station %in% c("17_2_P2", "20_P2", "297", "8_2_P2", "6_P2", "307", "310", "313", "318", "322", "326")))
+
+Stations_Combined_Atlantic <- datalist_Combined_reduced$Meta_Data %>%
+  filter(Ocean == "Atlantic") %>%
+  select(Latitude, Longitude, Province) %>%
   distinct() %>%
   arrange(Latitude) %>%
   mutate(Colour = left_join(., read.csv("~/PhD/SoftwareBuilds/ExCom/Data/Colors/Province_Colour.csv"), by = "Province")$Colour) 
 
-Stations_Combined_Pacific <- data_select("data/Pacific/", "Prok")$Meta_Data %>%
-  mutate(Ocean = "Pacific Ocean") %>%
-  select(Cruise, Ocean, Station, Latitude, Longitude, Province) %>%
+Stations_Combined_Pacific <- datalist_Combined_reduced$Meta_Data %>%
+  filter(Ocean == "Pacific") %>%
+  select(Latitude, Longitude, Province) %>%
   distinct() %>%
   arrange(Latitude) %>%
   mutate(Colour = left_join(., read.csv("~/PhD/SoftwareBuilds/ExCom/Data/Colors/Province_Colour.csv"), by = "Province")$Colour) %>%

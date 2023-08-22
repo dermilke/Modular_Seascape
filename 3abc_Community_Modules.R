@@ -115,27 +115,3 @@ datatable %>%
                                title.position = "top"))
 
 ggsave("figs/Network_Cluster_Composition_rel_dataset.png", width = 10, height = 5.5, dpi = 300)
-
-#### Phylogenetic relatedness of Cluster ####
-library(ggtree)
-
-Tree <- ape::read.tree("output/FastTree_Tree/Prok_Combined_SparCC.tree")
-
-Count_Table <- datalist_cluster$Count_Data %>%
-  select_if(is.numeric) %>%
-  as.matrix() %>%
-  Matrix::Matrix() %>%
-  magrittr::set_rownames(datalist_cluster$Count_Data$OTU_ID)
-
-my.ps <- phyloseq::phyloseq(phyloseq::otu_table(as.matrix(Count_Table), taxa_are_rows=T), 
-                            phyloseq::phy_tree(Tree))
-
-Unifrac_dist <- distance_wrapper(my.ps, method = "UniFrac_weighted", size.thresh = 1, pseudocount = 10^-6, nblocks = 100, 
-                                 use.cores = 4, cor.use = "na.or.complete")
-
-Unifrac_dist %>%
-  magrittr::set_colnames(c(1:10)) %>%
-  magrittr::set_rownames(c(1:10)) %>%
-  as.dist() %>%
-  hclust(method = "mcquitty") %>%
-  plot(., hang = -1, main = "", xlab = "", ylab = "", axes = F)

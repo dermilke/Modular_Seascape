@@ -16,8 +16,17 @@ get_colors_cont <- function(vec, palette, reverse = F, n = 9) {
     rgb(., maxColorValue = 255)
 }
 
-datalist <- import_data("data/Combined_Reduced/", kingdom = "Prok", abundance_filter = T, min_counts = 2000) %>%
+datalist_Atlantic <- import_data("data/Atlantic/", kingdom = "Prok", abundance_filter = F, min_counts = 2000) %>%
   mutate_meta_datalist(Depth_Grp = ifelse(Depth <= DCM, "Epi", "Meso"))
+
+datalist_Pacific <- import_data("data/Pacific/", kingdom = "Prok", abundance_filter = F, min_counts = 2000) %>%
+  mutate_meta_datalist(Depth_Grp = ifelse(Depth <= DCM, "Epi", "Meso"))
+
+datalist_Combined <- combine_data(mutate_meta_datalist(datalist_Atlantic, Station = as.character(Station),
+                                                       Ocean = "Atlantic Ocean"), 
+                                  mutate_meta_datalist(datalist_Pacific, Station = as.character(Station),
+                                                       Ocean = "Pacific Ocean")) %>%
+  mutate_meta_datalist(Depth_Int = c(20, 40, 60, 100, 200)[findInterval(Depth, c(20, 40, 60, 100, 200))])
 
 Max_Count <- datalist %>%
   mutate_count_datalist(function(x) x/sum(x)) %>%
@@ -68,6 +77,56 @@ cluster <- tibble(Cluster = cluster_edge_betweenness(network_combined)$membershi
   mutate(Degree = deg)
 
 write_csv(cluster, "output/SparCC/SparCC_Cluster.csv")
+
+#### Cluster validation ####
+library(vegan)
+library(BiocParallel)
+
+count_y <- datalist_Combined$Count_Data %>%
+  filter(OTU_ID %in% cluster$OTU_ID) %>%
+  dplyr::slice(match(cluster$OTU_ID, OTU_ID)) %>%
+  select_if(is.numeric)
+
+adonis2(count_y ~ Cluster, data = cluster)
+### --> Probability that distances between groups defined by modules are obtained by chance: p < 0.001 
+### (i.e. random assignment of ASVs to modules)
+
+bplapply(seq_len(Nperm), function(x) {
+  
+  count_y <- datalist_Combined$Count_Data %>%
+    filter(OTU_ID %in% cluster$OTU_ID) %>%
+    dplyr::slice(match(cluster$OTU_ID, OTU_ID)) %>%
+    select_if(is.numeric) %>%
+    select_if(colSums(.) >= 8000) %>%
+    t() %>%
+    rrarefy(., sample = 8000) %>%
+    t()
+  
+  perm <- adonis2(count_y ~ Cluster, data = cluster, by = "onedf")
+  
+})
+
+modularity1 = cluster_edge_betweenness(network_combined)
+
+obs <- modularity(modularity1)
+
+Nperm = 1000
+
+randomized.modularity <- bplapply(seq_len(Nperm), function(x){
+  randomnet <- rewire(network_combined, with=each_edge(0.5))
+  return(cluster_edge_betweenness(randomnet) %>% modularity())
+})
+
+lapply(randomized.modularity, function(x) x > obs) %>%
+  unlist() %>% sum()/Nperm
+
+### --> Probability that a network with comparable modularity is formed: p < 0.001
+### (i.e. the modularity of the graph partitioning)
+### (using random rewiring -> 50% chance for an edge to rewire terminal node)
+
+
+
+#### Network visualization ####
 
 png("figs/Network_Environment.png",
     res = 350, height = 250, width = 350, units = "mm", pointsize = 10)

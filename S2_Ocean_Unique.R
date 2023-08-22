@@ -35,14 +35,14 @@ get_colors <- function(datatable) {
   derivative_color
 }
 
-datalist_Atlantic <- import_data("data/Atlantic/", kingdom = "Prok", abundance_filter = T, min_counts = 2000) %>%
+datalist_Atlantic <- import_data("data/Atlantic/", kingdom = "Prok", abundance_filter = F, min_counts = 2000) %>%
   mutate_meta_datalist(Depth_Grp = ifelse(Depth <= DCM, "Epi", "Meso")) %>%
   mutate_meta_datalist(Ocean = "Atlantic") %>%
   mutate_meta_datalist(Station = as.character(Station)) %>%
   filter_taxa_datalist(Family != "Mitochondria") %>%
   filter_station_datalist(Depth <= 200)
 
-datalist_Pacific <- import_data("data/Pacific/", kingdom = "Prok", abundance_filter = T, min_counts = 2000) %>%
+datalist_Pacific <- import_data("data/Pacific/", kingdom = "Prok", abundance_filter = F, min_counts = 2000) %>%
   mutate_meta_datalist(Depth_Grp = ifelse(Depth <= DCM, "Epi", "Meso")) %>%
   mutate_meta_datalist(Ocean = "Pacific") %>%
   filter_taxa_datalist(Family != "Mitochondria") %>%
@@ -80,8 +80,8 @@ ggplot(., aes(x = as.factor(round(Latitude, digits = 2)), y = Abundance * 100, f
   facet_grid(Size_Fraction~Kombi, scales = "free_x") +
   labs(y = "Abundance (%)", x = "Latitude", fill = "Class - Family") +
   theme_bw() +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 6),
-        legend.text = element_text(size = 5)) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 5),
+        legend.text = element_text(size = 6)) +
   guides(fill = guide_legend(ncol = 1, keywidth = .5, keyheight = .5))
 
-ggsave(filename = "figs/Ocean_Unique_ASVs_final.png", width = 9, height = 6, dpi = 300)
+ggsave(filename = "figs/Ocean_Unique_ASVs_final.png", width = 11, height = 6, dpi = 300)
